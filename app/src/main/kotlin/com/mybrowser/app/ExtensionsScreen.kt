@@ -1,8 +1,6 @@
 package com.mybrowser.app
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -80,7 +78,7 @@ private val recommendedFirefoxExtensions = listOf(
 )
 
 @Composable
-fun ExtensionsScreen(onBack: () -> Unit) {
+fun ExtensionsScreen(onBack: () -> Unit, onBrowseAddonsInApp: (String) -> Unit) {
     val context = LocalContext.current
     var installed by remember { mutableStateOf<List<WebExtension>>(emptyList()) }
     var installing by remember { mutableStateOf<String?>(null) }
@@ -138,20 +136,19 @@ fun ExtensionsScreen(onBack: () -> Unit) {
                         }
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "ติดตั้งส่วนเสริมที่ลงนามโดย Mozilla ได้โดยตรง ไม่ต้องฝังไฟล์ .xpi ไว้ใน APK",
+                            "ติดตั้งส่วนเสริมที่ลงนามโดย Mozilla ได้โดยตรง ไม่ต้องฝังไฟล์ .xpi ไว้ใน APK เรียกดู Add-ons ในแอปนี้ได้เลย แล้วแตะ \"Add to Firefox\" เพื่อติดตั้งอัตโนมัติ",
                             color = Color(0xFFB5BBC5), fontSize = 13.sp
                         )
                         Spacer(Modifier.height(12.dp))
                         OutlinedButton(
                             onClick = {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://addons.mozilla.org/android/"))
-                                )
+                                // เปิดเว็บไซต์ Mozilla Add-ons ในแท็บของแอปเอง (ไม่สลับไปแอปเบราว์เซอร์อื่น)
+                                onBrowseAddonsInApp("https://addons.mozilla.org/th/android/")
                             }
                         ) {
                             Icon(Icons.Default.OpenInBrowser, null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(6.dp))
-                            Text("เปิด Mozilla Add-ons")
+                            Text("เรียกดู Mozilla Add-ons ในแอป")
                         }
                     }
                 }
@@ -164,7 +161,7 @@ fun ExtensionsScreen(onBack: () -> Unit) {
             items(recommendedFirefoxExtensions) { ext ->
                 ExtensionCard(
                     extension = ext,
-                    installed = installed.any { it.id.equals(ext.name, ignoreCase = true) || it.metaData?.name?.equals(ext.name, ignoreCase = true) == true },
+                    installed = installed.any { it.metaData?.name?.equals(ext.name, ignoreCase = true) == true || it.id.contains(ext.name.replace(" ", ""), ignoreCase = true) },
                     loading = installing == ext.name,
                     onInstall = {
                         installing = ext.name
