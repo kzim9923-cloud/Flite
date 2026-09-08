@@ -79,6 +79,7 @@ import org.mozilla.geckoview.GeckoRuntimeSettings
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSessionSettings
 import org.mozilla.geckoview.GeckoView
+import org.mozilla.geckoview.WebExtension
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URL
@@ -131,7 +132,12 @@ fun BookmarkGridItem(item: BookmarkItem, onClick: () -> Unit) {
     }
 }
 @Composable
-fun BrowserBottomToolbar(urlBarText: String, onUrlBarChange: (String) -> Unit, onGo: () -> Unit, onBack: () -> Unit, onForward: () -> Unit, onRefresh: () -> Unit, onMenu: () -> Unit, onTabs: () -> Unit, canGoBack: Boolean, canGoForward: Boolean, progress: Int) {
+fun BrowserBottomToolbar(
+    urlBarText: String, onUrlBarChange: (String) -> Unit, onGo: () -> Unit, onBack: () -> Unit, onForward: () -> Unit, onRefresh: () -> Unit, onMenu: () -> Unit, onTabs: () -> Unit, canGoBack: Boolean, canGoForward: Boolean, progress: Int,
+    extensionActions: Map<String, WebExtension.Action> = emptyMap(),
+    extensionIcons: Map<String, Bitmap> = emptyMap(),
+    onExtensionClick: (String) -> Unit = {}
+) {
     Column(modifier = Modifier.background(Color(0xFF1E1E1E))) {
         if (progress in 1..99) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth().height(2.dp))
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -148,8 +154,51 @@ fun BrowserBottomToolbar(urlBarText: String, onUrlBarChange: (String) -> Unit, o
                     }
                 }
             )
+            if (extensionActions.isNotEmpty()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    extensionActions.forEach { (id, action) ->
+                        val bitmap = extensionIcons[id]
+                        IconButton(onClick = { onExtensionClick(id) }, modifier = Modifier.size(34.dp)) {
+                            if (bitmap != null) {
+                                Image(bitmap = bitmap.asImageBitmap(), contentDescription = action.title ?: "ส่วนเสริม", modifier = Modifier.size(20.dp))
+                            } else {
+                                Icon(Icons.Default.Extension, contentDescription = action.title ?: "ส่วนเสริม", tint = Color.White, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
             IconButton(onClick = onTabs, modifier = Modifier.size(38.dp)) { Icon(Icons.Default.Layers, contentDescription = "Tabs", tint = Color.White) }
             IconButton(onClick = onMenu, modifier = Modifier.size(38.dp)) { Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = Color.White) }
+        }
+    }
+}
+
+/** Small floating panel that renders a WebExtension's popup (e.g. tapping the toolbar icon). */
+@Composable
+fun ExtensionPopup(session: GeckoSession, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.width(320.dp).height(420.dp),
+        color = Color(0xFF1B2028),
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 12.dp,
+        shadowElevation = 12.dp
+    ) {
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "ปิด", tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
+            AndroidView(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                factory = { ctx ->
+                    GeckoView(ctx).apply { setSession(session) }
+                }
+            )
         }
     }
 }

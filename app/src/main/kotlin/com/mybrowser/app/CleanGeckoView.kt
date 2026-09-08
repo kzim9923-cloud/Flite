@@ -207,6 +207,25 @@ fun CleanGeckoView(
                             return GeckoResult.fromValue(AllowOrDeny.DENY)
                         }
 
+                        // Any direct link to a Firefox extension package (e.g. from tapping
+                        // "Add to Firefox" on addons.mozilla.org, browsed in-app) installs the
+                        // extension directly instead of trying to download the raw .xpi file.
+                        val pathOnly = try { Uri.parse(urlStr).path ?: "" } catch (e: Exception) { "" }
+                        if (pathOnly.endsWith(".xpi", ignoreCase = true)) {
+                            Toast.makeText(ctx, "🧩 กำลังติดตั้งส่วนเสริม...", Toast.LENGTH_SHORT).show()
+                            GeckoEngine.installExtension(
+                                ctx,
+                                urlStr,
+                                onSuccess = { ext ->
+                                    Toast.makeText(ctx, "✅ ติดตั้ง ${ext.metaData?.name ?: ext.id} แล้ว", Toast.LENGTH_LONG).show()
+                                },
+                                onError = { err ->
+                                    Toast.makeText(ctx, "⚠️ ติดตั้งส่วนเสริมไม่สำเร็จ: ${err.message ?: "ไม่ทราบสาเหตุ"}", Toast.LENGTH_LONG).show()
+                                }
+                            )
+                            return GeckoResult.fromValue(AllowOrDeny.DENY)
+                        }
+
                         val scheme = try { Uri.parse(urlStr).scheme?.lowercase() ?: "" } catch (e: Exception) { "" }
                         val isHttp = scheme == "http" || scheme == "https"
 

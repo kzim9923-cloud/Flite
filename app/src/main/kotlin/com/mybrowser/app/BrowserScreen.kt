@@ -193,6 +193,7 @@ fun BrowserScreen(prefs: SharedPreferences) {
 
     BackHandler(enabled = true) {
         when {
+            GeckoEngine.popupSession != null -> GeckoEngine.dismissPopup()
             pendingRedirectUrl != null -> { pendingRedirectUrl = null; pendingRedirectTabId = null }
             showUrlSuggestions -> showUrlSuggestions = false
             contextMenuData != null -> contextMenuData = null
@@ -345,12 +346,26 @@ fun BrowserScreen(prefs: SharedPreferences) {
                 )
             }
 
-            if (showExtensionsScreen) { Box(Modifier.fillMaxSize()) { ExtensionsScreen(onBack = { showExtensionsScreen = false }) } }
+            if (showExtensionsScreen) {
+                Box(Modifier.fillMaxSize()) {
+                    ExtensionsScreen(
+                        onBack = { showExtensionsScreen = false },
+                        onBrowseAddonsInApp = { url ->
+                            showExtensionsScreen = false
+                            addTab(url)
+                        }
+                    )
+                }
+            }
             if (showDataDialog) DataManagementDialog(dbHelper, onSelectUrl = { navigate(it) }, onDismiss = { showDataDialog = false; refreshBookmarks() })
             if (showSettingsDialog) SettingsDialog(searchEngine, onSelectEngine = { searchEngine = it; dbHelper.setSetting("search_engine", it.name) }, onDismiss = { showSettingsDialog = false })
         }
 
         if (!showExtensionsScreen) Box {
+            GeckoEngine.popupSession?.let { popup ->
+                ExtensionPopup(session = popup, onDismiss = { GeckoEngine.dismissPopup() }, modifier = Modifier.align(Alignment.BottomCenter).offset(y = (-64).dp))
+            }
+
             BrowserBottomToolbar(
                 urlBarText = urlBarText,
                 onUrlBarChange = { text ->
@@ -364,7 +379,10 @@ fun BrowserScreen(prefs: SharedPreferences) {
                 onRefresh = { currentSession()?.reload() },
                 onMenu = { showMenu = !showMenu; showTabs = false },
                 onTabs = { showTabs = !showTabs; showMenu = false },
-                canGoBack = canGoBack, canGoForward = canGoForward, progress = if (tabs.getOrNull(currentTab)?.url == INTERNAL_HOME_URL) 0 else progress
+                canGoBack = canGoBack, canGoForward = canGoForward, progress = if (tabs.getOrNull(currentTab)?.url == INTERNAL_HOME_URL) 0 else progress,
+                extensionActions = GeckoEngine.actionsByExtensionId,
+                extensionIcons = GeckoEngine.extensionIcons,
+                onExtensionClick = { id -> GeckoEngine.clickAction(id) }
             )
 
             if (showUrlSuggestions && urlSuggestions.isNotEmpty()) {
